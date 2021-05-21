@@ -1,0 +1,29 @@
+# This file is a generic pipeline run instance that can be used to create multiple runs of our pipeline
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: hw-pipeline-run- # This allows us to create instances over and over with the same file
+  namespace: hw-pipeline # I build everything in this namespace and then deploy the application in other namespaces
+spec:
+  params:
+  - name: gitRevision
+    value: main
+  - name: gitUrl
+    value: https://github.com/maxflintoff/hello-world.git
+  - name: imageTag
+    value: latest
+  - name: imageUrl
+  # allows us to push to the internal OCP registry, change to your required registry
+    value: image-registry.openshift-image-registry.svc:5000/hw-pipeline/hw-dev
+  - name: pathToContext
+    value: app
+  # our pipeline name
+  pipelineRef:
+    name: hw-pipeline
+  # To keep everything together we use a service account specificly for this pipeline. This also allows us to push to the internal registry
+  serviceAccountName: hw-builder
+  # In this instance we use a PVC and PV bound on our cluster
+  workspaces:
+  - name: pipeline-build
+    persistentVolumeClaim:
+      claimName: pipeline-build-test

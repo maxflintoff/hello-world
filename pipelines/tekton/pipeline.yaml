@@ -1,0 +1,54 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: hw-pipeline
+  namespace: hw-pipeline # I build everything in this namespace and then deploy the application in other namespaces
+spec:
+  #Define a basic workspace that we can populate in our runs, this allows cloning git in one task and then building the image in another
+  workspaces:
+    - name: pipeline-build
+  params:
+    # this is the minimum set of required parameters for a successful run of this pipeline
+    - name: gitUrl
+      description: Git repository url
+    - name: gitRevision
+      description: Git revision to check out
+      default: main
+    - name: pathToContext
+      description: The path to the build context, used by Kaniko - within the workspace
+      default: app
+    - name: imageUrl
+      description: Image name including repository
+    - name: imageTag
+      description: Image tag
+      default: "latest"
+  tasks:
+    # First step runs a git clone
+    - name: clone
+      taskRef:
+        name: hw-clone
+      workspaces:
+        - name: output
+          workspace: pipeline-build
+      params:
+        - name: url
+          value: "$(params.gitUrl)"
+        - name: revision
+          value: "$(params.gitRevision)"
+        - name: deleteExisting
+          value: "true"
+    # second step runs a docker build in kaniko and pushes to a registry
+    - name: build-and-push
+      taskRef:
+        name: hw-build
+      runAfter:
+        - clone
+      workspaces:
+        - name: source
+          workspace: pipeline-build
+      params:
+        - name: CONTEXT
+          value: $(params.pathToContext)
+        #here we concatenate the image name and tag
+        - name: IMAGE
+          value: $(params.imageUrl):$(params.imageTag)

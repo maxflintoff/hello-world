@@ -1,0 +1,54 @@
+# This Task is based on the Tekton Library task
+# https://github.com/tektoncd/catalog/blob/main/task/kaniko/0.3
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: hw-build
+  namespace: hw-pipeline # I build everything in this namespace and then deploy the application in other namespaces
+spec:
+  workspaces:
+    - name: source
+      description: Workspace containing source code pulled in the previous step of pipeline
+  params:
+      # Image is parsed in as <image>:<tag> to this task
+    - name: IMAGE
+      description: Name (reference) of the image to build.
+      # we set the Dockerfile to one in the app directory of this repository by default
+    - name: DOCKERFILE
+      description: Path to the Dockerfile to build.
+      default: ./app/Dockerfile
+      # we set the context to the app directory of this repository by default
+    - name: CONTEXT
+      description: The build context used by Kaniko.
+      default: ./app
+    - name: EXTRA_ARGS
+      default: ""
+    - name: BUILDER_IMAGE
+      description: The image on which builds will run
+      # Fixed to the current release (20/05/2021)
+      default: gcr.io/kaniko-project/executor@sha256:6ecc43ae139ad8cfa11604b592aaedddcabff8cef469eda303f1fb5afe5e3034
+  steps:
+    - name: build-push
+      workingDir: $(workspaces.source.path)
+      image: $(params.BUILDER_IMAGE)
+      env:
+          # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
+          # https://github.com/tektoncd/pipeline/pull/706
+        - name: DOCKER_CONFIG
+          value: /tekton/home/.docker
+          # overwriting $HOME allows tasks to run with less privileges
+        - name: HOME
+          value: /tekton/home
+      command:
+        - /kaniko/executor
+      args:
+        # Parse basic params from above into the arguments of this task - allows this task more flexibility in future
+        - $(params.EXTRA_ARGS)
+        - --dockerfile=$(params.DOCKERFILE)
+        - --destination=$(params.IMAGE)
+        - "--context=$(workspaces.source.path)/$(params.CONTEXT)"
+        # in order to be able to push to the internal registry on OCP we need this as a stopgap. Ideally the kaniko image can be hosted internally with correct CA
+        - "--skip-tls-verify"
+      #This is needed as kaniko expects to run as root and OCP defaults to random uid - workaround to be investigated
+      securityContext:
+        runAsUser: 0

@@ -1,0 +1,49 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: pipeline-template
+spec:
+  params:
+  - name: gitRevision
+    description: The git revision
+    default: main
+  - name: gitUrl
+    description: The git repository url
+  - name: imageTag
+    description: Tag to use to push image
+    default: latest
+  - name: imageUrl
+    description: Image name to use to push image
+    default: image-registry.openshift-image-registry.svc:5000/hw-pipeline/hw-dev
+  - name: pathToContext
+    description: Context used for building image
+    default: app
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: hw-pipeline-run- # This allows us to create instances over and over with the same file
+        namespace: hw-pipeline # I build everything in this namespace and then deploy the application in other namespaces
+      spec:
+        params:
+        - name: gitRevision
+          value: ${tt.params.gitRevision}
+        - name: gitUrl
+          value: ${tt.params.gitUrl}
+        - name: imageTag
+          value: ${tt.params.imageTag}
+        - name: imageUrl
+        # allows us to push to the internal OCP registry, change to your required registry
+          value: ${tt.params.imageUrl}
+        - name: pathToContext
+          value: ${tt.params.pathToContext}
+        # our pipeline name
+        pipelineRef:
+          name: hw-pipeline
+        # To keep everything together we use a service account specificly for this pipeline. This also allows us to push to the internal registry
+        serviceAccountName: hw-builder
+        # In this instance we use a PVC and PV bound on our cluster
+        workspaces:
+        - name: pipeline-build
+          persistentVolumeClaim:
+            claimName: pipeline-build-test

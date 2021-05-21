@@ -1,0 +1,112 @@
+# This Task is based on the Tekton Library task
+# https://github.com/tektoncd/catalog/tree/main/task/git-clone/0.3
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: hw-clone
+  namespace: hw-pipeline # I build everything in this namespace and then deploy the application in other namespaces
+spec:
+  workspaces:
+    - name: output
+      description: The git repo will be cloned onto the volume backing this workspace so that it can be used in future pipeline steps
+  params:
+    - name: url
+      description: git url to clone
+      type: string
+    - name: revision
+      description: git revision to checkout (branch, tag, sha, ref…), default is set to track main branch
+      type: string
+      default: "main"
+    - name: depth
+      description: performs a shallow clone where only the most recent commit(s) will be fetched
+      type: string
+      default: "1"
+    - name: sslVerify
+      description: defines if http.sslVerify should be set to true or false in the global git config
+      type: string
+      default: "true"
+      # allows to run clones of smaller parts of a repo, useful for larger repos/monorepos
+    - name: sparseCheckoutDirectories
+      description: defines which directories patterns to match or exclude when performing a sparse checkout
+      type: string
+      default: ""
+    - name: deleteExisting
+      description: clean out the contents of the repo's destination directory (if it already exists) before trying to clone the repo there
+      type: string
+      default: "true"
+    - name: verbose
+      description: log the commands used during execution
+      type: string
+      default: "true"
+    - name: gitInitImage
+      description: the image used where the git-init binary is
+      type: string
+      default: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0"
+  results:
+    - name: commit
+      description: The precise commit SHA that was fetched by this Task
+    - name: url
+      description: The precise URL that was fetched by this Task
+  steps:
+    - name: clone
+      image: $(params.gitInitImage)
+      env:
+      - name: PARAM_URL
+        value: $(params.url)
+      - name: PARAM_REVISION
+        value: $(params.revision)
+      - name: PARAM_DEPTH
+        value: $(params.depth)
+      - name: PARAM_SSL_VERIFY
+        value: $(params.sslVerify)
+      - name: PARAM_DELETE_EXISTING
+        value: $(params.deleteExisting)
+      - name: PARAM_VERBOSE
+        value: $(params.verbose)
+      - name: PARAM_SPARSE_CHECKOUT_DIRECTORIES
+        value: $(params.sparseCheckoutDirectories)
+      - name: WORKSPACE_OUTPUT_PATH
+        value: $(workspaces.output.path)
+      # overwriting $HOME allows tasks to run with less privileges
+      - name: HOME
+        value: /tekton/home
+      script: |
+        #!/bin/sh
+        set -eu -o pipefail
+        if [[ "${PARAM_VERBOSE}" == "true" ]] ; then
+          set -x
+        fi
+        CHECKOUT_DIR="${WORKSPACE_OUTPUT_PATH}"
+        cleandir() {
+          # Delete any existing contents of the repo directory if it exists.
+          #
+          # We don't just "rm -rf $CHECKOUT_DIR" because $CHECKOUT_DIR might be "/"
+          # or the root of a mounted volume.
+          if [[ -d "$CHECKOUT_DIR" ]] ; then
+            # Delete non-hidden files and directories
+            rm -rf "$CHECKOUT_DIR"/*
+            # Delete files and directories starting with . but excluding ..
+            rm -rf "$CHECKOUT_DIR"/.[!.]*
+            # Delete files and directories starting with .. plus any other character
+            rm -rf "$CHECKOUT_DIR"/..?*
+          fi
+        }
+        if [[ "${PARAM_DELETE_EXISTING}" == "true" ]] ; then
+          cleandir
+        fi
+        /ko-app/git-init \
+          -url "${PARAM_URL}" \
+          -revision "${PARAM_REVISION}" \
+          -path "$CHECKOUT_DIR" \
+          -sslVerify="${PARAM_SSL_VERIFY}" \
+          -depth "${PARAM_DEPTH}" \
+          -sparseCheckoutDirectories "${PARAM_SPARSE_CHECKOUT_DIRECTORIES}"
+        cd "$CHECKOUT_DIR"
+        RESULT_SHA="$(git rev-parse HEAD)"
+        EXIT_CODE="$?"
+        if [ "$EXIT_CODE" != 0 ] ; then
+          exit $EXIT_CODE
+        fi
+        # ensure we don't add a trailing newline to the result
+        echo -n "$RESULT_SHA" > $(results.commit.path)
+        echo -n "${PARAM_URL}" > $(results.url.path)
