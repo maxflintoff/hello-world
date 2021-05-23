@@ -31,5 +31,18 @@ spec:
           limits:
             memory: "150Mi"
             cpu: "500m"
+        # liveness probe does a simple check on a route defined in our application
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        # readiness probe checks that the application is listening on our defined port before adding it into the endpoints
+        readinessProbe:
+          tcpSocket:
+            port: 8888
+          initialDelaySeconds: 10
+          periodSeconds: 30
       # To be as tightly controlled as possible in an automated fashion I am using a specific SA for this deployment
       serviceAccountName: hello-world
