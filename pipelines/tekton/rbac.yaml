@@ -24,6 +24,7 @@ subjects:
   name: hw-builder
   namespace: hw-pipeline
 ---
+# SCC is needed due to kaniko expecting uid of 0
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:

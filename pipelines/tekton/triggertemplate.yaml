@@ -1,3 +1,4 @@
+#This basic trigger template allows us to consume a payload from a github webhook and trigger a pipeline run
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:

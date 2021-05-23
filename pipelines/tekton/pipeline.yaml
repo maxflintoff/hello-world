@@ -1,10 +1,12 @@
+# This file contains a basic tekton pipeline to take the source code in this repo, build a container image and deploy on k8s
+#
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: hw-pipeline
   namespace: hw-pipeline # I build everything in this namespace and then deploy the application in other namespaces
 spec:
-  #Define a basic workspace that we can populate in our runs, this allows cloning git in one task and then building the image in another
+  #Define a basic workspace that we can populate in our runs, this allows cloning git in one task then using that source to compile and deploy
   workspaces:
     - name: pipeline-build
   params:
@@ -49,6 +51,19 @@ spec:
       params:
         - name: CONTEXT
           value: $(params.pathToContext)
+        #here we concatenate the image name and tag
+        - name: IMAGE
+          value: $(params.imageUrl):$(params.imageTag)
+    # third step uses the image built in the previous step and updates our manifests in manifest/k8s to deploy
+    - name: deploy
+      taskRef:
+        name: hw-deploy
+      runAfter:
+        - build-and-push
+      workspaces:
+        - name: manifests
+          workspace: pipeline-build
+      params:
         #here we concatenate the image name and tag
         - name: IMAGE
           value: $(params.imageUrl):$(params.imageTag)

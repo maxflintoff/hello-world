@@ -1,2 +1,3 @@
+# ignoring node.js files when we pull application files into docker
 node_modules
 npm-debug.log

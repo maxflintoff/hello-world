@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: hw-deploy
+  namespace: hw-pipeline
+spec:
+  workspaces:
+    - name: manifests
+      description: Workspace containing source code pulled in the previous step of pipeline
+  results:
+    - name: output
+      description: for any future output we use in the next stage
+  params:
+    # new image built by pipeline that is used in the manifests
+    - name: IMAGE
+      description: Image name to patch in deployment
+      type: string
+    - name: KUBECTL_IMAGE
+      default: bitnami/kubectl:1.19.11 #image fixed to my test env k8s version
+      description: Kubectl wrapper image from docker.io
+    # adding a variable for this allows future expansion if we want to re-use this task to deploy something else
+    - name: MANIFEST_DIR
+      default: manifests/k8s
+      description: the subdirectory containing your manifest for deployment
+    - name: IMAGE_REPLACE
+      default: hw-pipeline/hw-dev:latest
+      description: String for image name to replace in the k8s manifests
+  steps:
+    - name: kubectl
+      env:
+        - name: DOCKER_CONFIG
+          value: /tekton/home/.docker
+        # overwriting $HOME allows tasks to run with less privileges
+        - name: HOME
+          value: /tekton/home
+      image: $(params.KUBECTL_IMAGE)
+      script: |
+        #!/usr/bin/env bash
+        cd $(workspaces.manifests.path)
+
+        echo "updating manifests with image @ $(params.IMAGE)"
+
+        find $(params.MANIFEST_DIR) -type f -exec sed -i.bak "s=$(params.IMAGE_REPLACE)=$(params.IMAGE)=g" {} \;
+
+        kubectl apply -f $(params.MANIFEST_DIR)

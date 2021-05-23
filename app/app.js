@@ -47,7 +47,13 @@ app.get('/', (req, res) => {
   res.json(resp)
 })
 
-// This is so we can get a correct source IP on kubernetes - currently just piping in service IP CIDR and cluster CIDR, logging function should be refined to allow for detection regardless of environment
+//a health check that will return a response if the application is live 
+app.get('/health', (req, res) => {
+  resp = generateDatedResponse("Health check passed")
+  res.json(resp)
+}) 
+
+// This is so we can get a correct source IP on kubernetes - currently just piping in service IP CIDR, cluster CIDR & machine network, logging function should be refined to allow for detection regardless of environment
 app.set('trust proxy', 'loopback, linklocal, uniquelocal, 172.21.0.0/16, 172.17.0.0/18, 10.242.0.0/16')
 
 //listen on port defined above 
