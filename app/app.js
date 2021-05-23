@@ -47,7 +47,10 @@ app.get('/', (req, res) => {
   res.json(resp)
 })
 
+// This is so we can get a correct source IP on kubernetes - currently just piping in service IP CIDR and cluster CIDR, logging function should be refined to allow for detection regardless of environment
+app.set('trust proxy', 'loopback, linklocal, uniquelocal, 172.21.0.0/16, 172.17.0.0/18')
+
 //listen on port defined above 
 app.listen(port, () => {
-  console.log(`Hello world now listening on port ${port}`)
+  console.log(`${new Date()}\nHello world now listening on port ${port}`)
 })
