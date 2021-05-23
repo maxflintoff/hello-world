@@ -10,5 +10,5 @@ spec:
     app: hello-world
   ports:
     - protocol: TCP
-      port: 80
-      targetPort: 8888 
+      port: 8000
+      targetPort: http 

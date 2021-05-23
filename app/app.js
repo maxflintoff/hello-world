@@ -1,7 +1,7 @@
 //load components for express server
 const express = require('express')
 const app = express()
-const port = 8888
+const port = process.env.PORT || 8888
 
 //this function allows us to return a 2 digit number on the single digit the Date object generates
 let formatNumber = (val) => {

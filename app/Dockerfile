@@ -13,7 +13,5 @@ RUN npm ci --only=production
 # Bundle app source
 COPY . .
 
-# Expose port 8888 that the application expects to run
-EXPOSE 8888
 # CMD to start the app
 CMD [ "node", "app.js" ]
