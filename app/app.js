@@ -27,7 +27,21 @@ let generateDatedResponse = (msg) => {
   return response;
 }
 
-// root of webapp retruns a basic json with "Hello world" and runs it through helper functions
+// this function logs our request to console
+let logRequest = (req, res, next) => {
+  let ip = req.ip
+  let route = req.url
+  let resp = generateDatedResponse(`${req.ip} requested page ${req.url}`)
+  resp.ip = ip
+  resp.route = route
+  console.info(resp)
+  next()
+}
+
+// this loads the logging function into our express app and calls it as middleware. This allows for easier expansion of our logging functions as the application matures
+app.use(logRequest)
+
+// root of webapp retruns a basic json with "Hello world" and runs it through a helper function to append the date and time
 app.get('/', (req, res) => {
   resp = generateDatedResponse("Hello world")
   res.json(resp)
@@ -35,5 +49,5 @@ app.get('/', (req, res) => {
 
 //listen on port defined above 
 app.listen(port, () => {
-  console.log(`Hello world now listening at http://localhost:${port}`)
+  console.log(`Hello world now listening on port ${port}`)
 })
