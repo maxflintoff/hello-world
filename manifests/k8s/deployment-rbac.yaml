@@ -9,7 +9,7 @@ rules:
 # This same rule set is replicated across the three namespaces this demonstration uses - it allows for a small subset of tasks that is required to deploy these manifest
   - verbs: ["get", "create", "patch"]
     apiGroups: ["", "autoscaling", "rbac.authorization.k8s.io", "apps"]
-    resources: ["deployments", "services", "serviceaccounts", "horizontalpodautoscalers", "rolebindings"]
+    resources: ["deployments", "services", "serviceaccounts", "horizontalpodautoscalers", "rolebindings", "roles"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -33,7 +33,7 @@ metadata:
 rules:
   - verbs: ["get", "create", "patch"]
     apiGroups: ["", "autoscaling", "rbac.authorization.k8s.io", "apps"]
-    resources: ["deployments", "services", "serviceaccounts", "horizontalpodautoscalers", "rolebindings"]
+    resources: ["deployments", "services", "serviceaccounts", "horizontalpodautoscalers", "rolebindings", "roles"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -57,7 +57,7 @@ metadata:
 rules:
   - verbs: ["get", "create", "patch"]
     apiGroups: ["", "autoscaling", "rbac.authorization.k8s.io", "apps"]
-    resources: ["deployments", "services", "serviceaccounts", "horizontalpodautoscalers", "rolebindings"]
+    resources: ["deployments", "services", "serviceaccounts", "horizontalpodautoscalers", "rolebindings", "roles"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
