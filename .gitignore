@@ -1,2 +1,8 @@
 # Node.js ignore list
 node_modules
+
+# terraform ignore list
+*.tfstate
+*.tfstate.backup
+*.lock.*
+.terraform
