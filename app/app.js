@@ -34,7 +34,8 @@ let logRequest = (req, res, next) => {
   let resp = generateDatedResponse(`${req.ip} requested page ${req.url}`)
   resp.ip = ip
   resp.route = route
-  console.info(resp)
+  resp.status = res.statusCode
+  console.info(JSON.stringify(resp))
   next()
 }
 
