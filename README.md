@@ -4,7 +4,9 @@ This repository contains a collection of tools that allows you to automate deplo
 
 ## /app
 
-This directory contains a simple application written in Javascript based on the Express framework. The application is designed to be run on a container orchestration platform such as kubernetes
+This directory contains a simple application written in Javascript based on the Express framework. The application is designed to be run on a container orchestration platform such as kubernetes. The application can be run and tested locally either by building with the Dockerfile or by using [nodejs](https://nodejs.org/en/)
+
+```node app/app.js```
 
 ## /manifests
 
