@@ -1,0 +1,74 @@
+# This file contains a general setup for RBAC on k8s to allow a piepline and service account to create every resource in the manifests/k8s folder
+# Edit as appropriate for your environment
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: hw-deployment
+  namespace: hw-dev
+rules:
+# This same rule set is replicated across the three namespaces this demonstration uses - it allows for a small subset of tasks that is required to deploy these manifest
+  - verbs: ["get", "create", "patch"]
+    apiGroups: ["", "autoscaling", "rbac.authorization.k8s.io", "apps"]
+    resources: ["deployments", "services", "serviceaccounts", "horizontalpodautoscalers", "rolebindings"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hw-builder-deployer
+  namespace: hw-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hw-deployment
+subjects:
+- kind: ServiceAccount
+  name: hw-builder
+  namespace: hw-pipeline
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: hw-deployment
+  namespace: hw-stage
+rules:
+  - verbs: ["get", "create", "patch"]
+    apiGroups: ["", "autoscaling", "rbac.authorization.k8s.io", "apps"]
+    resources: ["deployments", "services", "serviceaccounts", "horizontalpodautoscalers", "rolebindings"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hw-builder-deployer
+  namespace: hw-stage
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hw-deployment
+subjects:
+- kind: ServiceAccount
+  name: hw-builder
+  namespace: hw-pipeline
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: hw-deployment-creator
+  namespace: hw-pipeline
+rules:
+  - verbs: ["get", "create", "patch"]
+    apiGroups: ["", "autoscaling", "rbac.authorization.k8s.io", "apps"]
+    resources: ["deployments", "services", "serviceaccounts", "horizontalpodautoscalers", "rolebindings"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hw-builder-deployer
+  namespace: hw-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hw-deployment-creator
+subjects:
+- kind: ServiceAccount
+  name: hw-builder
+  namespace: hw-pipeline

@@ -1,3 +1,5 @@
+# This rolebinding is used to allow the basic service accounts defined in the manifests to pull images from the internal openshift registry
+# Should be updated as appropriate for registry being used in your environment
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

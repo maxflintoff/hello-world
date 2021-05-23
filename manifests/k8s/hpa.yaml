@@ -1,3 +1,4 @@
+# This is a simple HPA to allow the application to scale with load - currently focused on the dev environment to allow for load testing at the first stage of the application
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:

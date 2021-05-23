@@ -1,3 +1,4 @@
+#This is a generic ClusterIP k8s service intended to be added to with a form of ingress to allow external communication. 
 apiVersion: v1
 kind: Service
 metadata:
@@ -10,4 +11,4 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8888
+      targetPort: 8888 

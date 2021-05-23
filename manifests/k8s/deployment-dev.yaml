@@ -1,3 +1,5 @@
+# This is a simple dev deployment that can be updated as appropriate as the application matures
+# The intention is to allow the lifecycle to mature with the codebase
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,9 +19,11 @@ spec:
     spec:
       containers:
       - name: hello-world
+      # This is a generic image name - intended to be updated/replaced in a pipeline
         image: hw-pipeline/hw-dev:latest
         ports:
         - containerPort: 8888
+        # The resource requests are higher than needed for the current state of the application but will allow some natural growth as the application matures
         resources:
           requests:
             memory: "25Mi"
@@ -27,4 +31,5 @@ spec:
           limits:
             memory: "150Mi"
             cpu: "500m"
+      # To be as tightly controlled as possible in an automated fashion I am using a specific SA for this deployment
       serviceAccountName: hello-world
