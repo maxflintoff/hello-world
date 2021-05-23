@@ -1,0 +1,27 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: gitlab-listener-interceptor
+  namespace: hw-pipeline
+spec:
+  # this service account allows permission to monitor/create pipeline runs
+  serviceAccountName: hw-listener-sa
+  triggers:
+    - name: github-listener
+      # this refers to the triggerbinding.yaml
+      bindings:
+        - ref: pipeline-binding
+      # this refers to the triggertemplate.yaml
+      template:
+        ref: pipeline-template
+      # We use a default github interceptor to filter our incoming events  
+      interceptors:
+        - github:
+            # This refers to a secret in the same namespace as this object, this contains a token that the github webhook sends with its payload to allow the listener to authenticate incoming payloads
+            secretRef:
+              secretName: hw-interceptor-secret
+              secretKey: secretToken
+            # We only trigger our pipeline on a push event
+            eventTypes:
+              - push
+ 

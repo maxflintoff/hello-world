@@ -1,0 +1,14 @@
+#This trigger binding allows us to bind an event listener and will parse a github webhook payload into a pipeline run
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: pipeline-binding
+  namespace: hw-pipeline
+spec:
+  params:
+  - name: gitRevision
+    value: $(body.head_commit.id)
+  - name: gitUrl
+    value: $(body.repository.url)
+  - name: imageTag
+    value: $(body.head_commit.id)

@@ -1,0 +1,70 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-event-listener-role
+  namespace: hw-pipeline
+rules:
+# EventListeners need to be able to fetch all namespaced tekton resources
+- apiGroups: ["triggers.tekton.dev"]
+  resources: ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+ # secrets are only needed for GitHub/GitLab interceptors
+ # configmaps is needed for updating logging config
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+ # Permissions to create resources in associated TriggerTemplates
+- apiGroups: ["tekton.dev"]
+  resources: ["pipelineruns", "pipelineresources", "taskruns"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["impersonate"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-event-listener-clusterrole
+rules:
+# EventListeners need to be able to fetch any clustertriggerbindings
+- apiGroups: ["triggers.tekton.dev"]
+  resources: ["clustertriggerbindings"]
+  verbs: ["get", "list", "watch"]
+# EventListeners need to be able to interact with clusterinterceptors
+- apiGroups: ["triggers.tekton.dev"]
+  resources: ["clusterinterceptors"]
+  verbs: ["get", "list", "watch"]
+---
+# Service account that can be used by the event listener to access resources it needs
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hw-listener-sa
+  namespace: hw-pipeline
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-event-listener-role-binding
+  namespace: hw-pipeline
+subjects:
+- kind: ServiceAccount
+  name: hw-listener-sa
+  namespace: hw-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-event-listener-role
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-triggers-example-clusterbinding
+subjects:
+- kind: ServiceAccount
+  name: hw-listener-sa
+  namespace: hw-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-event-listener-clusterrole

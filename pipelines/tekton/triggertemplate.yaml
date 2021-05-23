@@ -3,6 +3,7 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
   name: pipeline-template
+  namespace: hw-pipeline
 spec:
   params:
   - name: gitRevision
