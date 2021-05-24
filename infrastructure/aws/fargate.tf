@@ -82,8 +82,31 @@ resource "aws_ecs_cluster" "ecs_cluster" {
 
 //TODO iam
 
+// create execution role that our task needs to be able log correctly
+resource "aws_iam_role" "execution_role" {
+  name = "${var.app_name}-execution-role"
+  tags = var.tags
+
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+  ]
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+
 // create ECS service 
-resource "aws_ecs_task_definition" "service" {
+resource "aws_ecs_task_definition" "task_definition" {
   family = "${var.app_name}-task"
   cpu = 256
   memory = 512
@@ -92,10 +115,11 @@ resource "aws_ecs_task_definition" "service" {
     "FARGATE"
   ]
   network_mode = "awsvpc"
+  execution_role_arn = aws_iam_role.execution_role.arn
   container_definitions = jsonencode([
     {
       name      = var.app_name
-      image     = "465310043917.dkr.ecr.eu-west-2.amazonaws.com/hello-world-nodejs:latest"
+      image     = var.image
       cpu       = 0
       memory    = 512
       memoryReservation = 25
@@ -103,15 +127,15 @@ resource "aws_ecs_task_definition" "service" {
       essential = true
       portMappings = [
         {
-          containerPort = 8888
-          hostPort = 8888
+          containerPort = var.app_port
+          hostPort = var.app_port
           protocol = "tcp"
         }
       ]
       environment = [
         {
           name = "PORT"
-          value = "8888"
+          value = tostring(var.app_port)
         }
       ]
       healthCheck       = {
@@ -135,4 +159,58 @@ resource "aws_ecs_task_definition" "service" {
       }
     }
   ])
+}
+
+// create alb to be used for accessing service
+
+resource "aws_lb" "alb" {
+  name = "${var.app_name}-alb"
+  internal = false
+  subnets = aws_subnet.subnets.*.id
+  tags = var.tags
+}
+
+resource "aws_lb_target_group" "alb_tg" {
+  name = "${var.app_name}-alb-tg"
+  port = 80
+  protocol = "HTTP"
+  vpc_id = aws_vpc.vpc.id
+  target_type = "ip"
+  tags = var.tags
+
+  health_check {
+    path = var.health_check_path
+  }
+}
+
+resource "aws_lb_listener" "alb_listener" {
+  load_balancer_arn = aws_lb.alb.arn
+  port = 80
+  protocol = "HTTP"
+  tags = var.tags
+  default_action {
+    target_group_arn = aws_lb_target_group.alb_tg.arn
+    type = "forward"
+  }
+}
+
+resource "aws_ecs_service" "service" {
+  name = "${var.app_name}-service"
+  cluster = aws_ecs_cluster.ecs_cluster.id
+  desired_count   = 3
+  task_definition = aws_ecs_task_definition.task_definition.arn
+  launch_type = "FARGATE"
+  network_configuration {
+    subnets = aws_subnet.subnets.*.id
+    assign_public_ip = true
+  }
+
+  tags = var.tags
+  enable_ecs_managed_tags = true
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.alb_tg.arn
+    container_name = var.app_name
+    container_port = var.app_port
+  }
 }

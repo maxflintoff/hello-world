@@ -24,3 +24,19 @@ variable "app_name" {
     type = string
     default = "hello-world"
 }
+
+//image location with tag to use for deploying fargate service 
+variable "image" {
+    type = string
+    default = "465310043917.dkr.ecr.eu-west-2.amazonaws.com/hello-world-nodejs:latest"
+}
+
+variable "app_port" {
+    type = number
+    default = 8888
+}
+
+variable "health_check_path" {
+    type = string
+    default = "/health"
+}
