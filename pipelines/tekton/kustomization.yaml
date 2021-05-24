@@ -1,0 +1,17 @@
+# TODO refine into overlays structure
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- namespaces.yaml
+- rbac.yaml
+# uncomment line if on openshift
+# - ocp-scc.yaml
+- build-task.yaml
+- clone-task.yaml
+- deploy-task.yaml
+- pipeline.yaml
+- deployment-rbac.yaml
+- triggerbinding.yaml
+- triggertemplate.yaml
+- eventlistener-rbac.yaml
+- eventlistener.yaml

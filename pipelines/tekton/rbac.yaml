@@ -1,6 +1,5 @@
-# This file contains some basic RBAC requirements that allow this to run on OCP and k8s
-# for k8s exclude the SecurityContextConstraints object
-# the roleBinding will also need to be changed depending on setup
+# This file contains some basic RBAC requirements that allow this to run on k8s
+# the roleBinding will also need to be changed depending on setup - as it is set up to use the internal openshift registry
 # It is currently a basic set of reqs and should be tightened with refinement of the pipeline process
 apiVersion: v1
 kind: ServiceAccount
@@ -23,43 +22,3 @@ subjects:
 - kind: ServiceAccount
   name: hw-builder
   namespace: hw-pipeline
----
-# SCC is needed due to kaniko expecting uid of 0
-apiVersion: security.openshift.io/v1
-kind: SecurityContextConstraints
-metadata:
-  name: hw-builder-restricted
-allowHostPorts: false
-priority: null
-requiredDropCapabilities:
-  - KILL
-  - MKNOD
-  - SETUID
-  - SETGID
-allowPrivilegedContainer: false
-runAsUser:
-  type: RunAsAny
-allowHostDirVolumePlugin: false
-allowHostIPC: false
-seLinuxContext:
-  type: MustRunAs
-readOnlyRootFilesystem: false
-fsGroup:
-  type: RunAsAny
-groups: []
-defaultAddCapabilities: null
-supplementalGroups:
-  type: RunAsAny
-volumes:
-  - configMap
-  - downwardAPI
-  - emptyDir
-  - persistentVolumeClaim
-  - projected
-  - secret
-allowHostPID: false
-allowHostNetwork: false
-allowPrivilegeEscalation: true
-allowedCapabilities: null
-users:
-  - 'system:serviceaccount:hw-pipeline:hw-builder'

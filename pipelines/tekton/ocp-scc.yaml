@@ -1,0 +1,39 @@
+# SCC is needed due to kaniko expecting uid of 0
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: hw-builder-restricted
+allowHostPorts: false
+priority: null
+requiredDropCapabilities:
+  - KILL
+  - MKNOD
+  - SETUID
+  - SETGID
+allowPrivilegedContainer: false
+runAsUser:
+  type: RunAsAny
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+seLinuxContext:
+  type: MustRunAs
+readOnlyRootFilesystem: false
+fsGroup:
+  type: RunAsAny
+groups: []
+defaultAddCapabilities: null
+supplementalGroups:
+  type: RunAsAny
+volumes:
+  - configMap
+  - downwardAPI
+  - emptyDir
+  - persistentVolumeClaim
+  - projected
+  - secret
+allowHostPID: false
+allowHostNetwork: false
+allowPrivilegeEscalation: true
+allowedCapabilities: null
+users:
+  - 'system:serviceaccount:hw-pipeline:hw-builder'
