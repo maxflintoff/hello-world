@@ -17,12 +17,12 @@ provider "aws" {
 // create a VPC
 resource "aws_vpc" "vpc" {
 
-    cidr_block = var.cidr_block
+  cidr_block = var.cidr_block
 
-    // append our tags variable with a name related to our application
-    tags = merge({
-        Name = "${var.app_name}-vpc"
-    }, var.tags)
+  // append our tags variable with a name related to our application
+  tags = merge({
+    Name = "${var.app_name}-vpc"
+  }, var.tags)
 }
 
 // Load AZ information
@@ -33,51 +33,51 @@ data "aws_availability_zones" "available" {
 
 // create subnets
 resource "aws_subnet" "subnets" {
-    // create one per availability zone as loaded in previous data source
-    count = length(data.aws_availability_zones.available.names)
+  // create one per availability zone as loaded in previous data source
+  count = length(data.aws_availability_zones.available.names)
 
-    vpc_id = aws_vpc.vpc.id
-    availability_zone = data.aws_availability_zones.available.names[count.index]
-    cidr_block  = cidrsubnet(aws_vpc.vpc.cidr_block, 4, count.index)
-    tags = merge({
-        Name = "${var.app_name}-subnet-${data.aws_availability_zones.available.names[count.index]}"
-    }, var.tags)
+  vpc_id            = aws_vpc.vpc.id
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+  cidr_block        = cidrsubnet(aws_vpc.vpc.cidr_block, 4, count.index)
+  tags = merge({
+    Name = "${var.app_name}-subnet-${data.aws_availability_zones.available.names[count.index]}"
+  }, var.tags)
 }
 
 // create internet gateway
 resource "aws_internet_gateway" "igw" {
-    vpc_id = aws_vpc.vpc.id
+  vpc_id = aws_vpc.vpc.id
 
-    tags = merge({
-        Name = "${var.app_name}-vpc-igw"
-    }, var.tags)
+  tags = merge({
+    Name = "${var.app_name}-vpc-igw"
+  }, var.tags)
 }
 
 // create route table
 resource "aws_route_table" "route_table" {
-    vpc_id = aws_vpc.vpc.id
-    
-    route {
-        cidr_block = "0.0.0.0/0"
-        gateway_id = aws_internet_gateway.igw.id
-    }
+  vpc_id = aws_vpc.vpc.id
 
-    tags = merge({
-        Name = "${var.app_name}-vpc-rt"
-    }, var.tags)
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = merge({
+    Name = "${var.app_name}-vpc-rt"
+  }, var.tags)
 }
 
 // associate vpc with route table
 resource "aws_main_route_table_association" "route_table_association" {
-    vpc_id = aws_vpc.vpc.id
-    route_table_id = aws_route_table.route_table.id
+  vpc_id         = aws_vpc.vpc.id
+  route_table_id = aws_route_table.route_table.id
 }
 
 // create ECS Cluster
 resource "aws_ecs_cluster" "ecs_cluster" {
 
-    name = "${var.app_name}-ecs"
-    tags = var.tags
+  name = "${var.app_name}-ecs"
+  tags = var.tags
 }
 
 //TODO iam
@@ -108,75 +108,112 @@ resource "aws_iam_role" "execution_role" {
 // create ECS service 
 resource "aws_ecs_task_definition" "task_definition" {
   family = "${var.app_name}-task"
-  cpu = 256
+  cpu    = 256
   memory = 512
-  tags = var.tags
+  tags   = var.tags
   requires_compatibilities = [
     "FARGATE"
   ]
-  network_mode = "awsvpc"
+  network_mode       = "awsvpc"
   execution_role_arn = aws_iam_role.execution_role.arn
   container_definitions = jsonencode([
     {
-      name      = var.app_name
-      image     = var.image
-      cpu       = 0
-      memory    = 512
+      name              = var.app_name
+      image             = var.image
+      cpu               = 0
+      memory            = 512
       memoryReservation = 25
-      mountPoints = []
-      essential = true
+      mountPoints       = []
+      essential         = true
       portMappings = [
         {
           containerPort = var.app_port
-          hostPort = var.app_port
-          protocol = "tcp"
+          hostPort      = var.app_port
+          protocol      = "tcp"
         }
       ]
       environment = [
         {
-          name = "PORT"
+          name  = "PORT"
           value = tostring(var.app_port)
         }
       ]
-      healthCheck       = {
-        command     = [
+      healthCheck = {
+        command = [
           "\"CMD-SHELL\"",
           "\"curl -f http://localhost:8888/health || exit 1\"",
         ]
-        interval = 5
-        retries = 3
+        interval    = 5
+        retries     = 3
         startPeriod = 5
-        timeout = 5
-        }
+        timeout     = 5
+      }
       volumesFrom = []
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-            awslogs-group = "/ecs/${var.app_name}-task"
-            awslogs-region = var.aws_region
-            awslogs-stream-prefix = "ecs"
+          awslogs-group         = "/ecs/${var.app_name}-task"
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
         }
       }
     }
   ])
 }
 
-// create alb to be used for accessing service
+// create security group to use for lb
+
+resource "aws_security_group" "alb_sg" {
+  name        = "${var.app_name}-sg"
+  description = "Created by terraform for ${var.app_name} deployment on ECS"
+  vpc_id      = aws_vpc.vpc.id
+  tags        = var.tags
+
+  ingress {
+    description      = "Allow inbound to ${var.app_name}"
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+}
+
+//allows all intenal traffic
+resource "aws_security_group_rule" "allow_sg_traffic" {
+  type                     = "ingress"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "all"
+  security_group_id        = aws_security_group.alb_sg.id
+  source_security_group_id = aws_security_group.alb_sg.id
+}
+
+// create and configure alb to be used for accessing service
 
 resource "aws_lb" "alb" {
-  name = "${var.app_name}-alb"
-  internal = false
-  subnets = aws_subnet.subnets.*.id
-  tags = var.tags
+  name            = "${var.app_name}-alb"
+  internal        = false
+  subnets         = aws_subnet.subnets.*.id
+  security_groups = [aws_security_group.alb_sg.id]
+  tags            = var.tags
 }
 
 resource "aws_lb_target_group" "alb_tg" {
-  name = "${var.app_name}-alb-tg"
-  port = 80
-  protocol = "HTTP"
-  vpc_id = aws_vpc.vpc.id
+  name        = "${var.app_name}-alb-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.vpc.id
   target_type = "ip"
-  tags = var.tags
+  tags        = var.tags
 
   health_check {
     path = var.health_check_path
@@ -185,32 +222,33 @@ resource "aws_lb_target_group" "alb_tg" {
 
 resource "aws_lb_listener" "alb_listener" {
   load_balancer_arn = aws_lb.alb.arn
-  port = 80
-  protocol = "HTTP"
-  tags = var.tags
+  port              = 80
+  protocol          = "HTTP"
+  tags              = var.tags
   default_action {
     target_group_arn = aws_lb_target_group.alb_tg.arn
-    type = "forward"
+    type             = "forward"
   }
 }
 
 resource "aws_ecs_service" "service" {
-  name = "${var.app_name}-service"
-  cluster = aws_ecs_cluster.ecs_cluster.id
-  desired_count   = 3
+  name            = "${var.app_name}-service"
+  cluster         = aws_ecs_cluster.ecs_cluster.id
+  desired_count   = var.app_count
   task_definition = aws_ecs_task_definition.task_definition.arn
-  launch_type = "FARGATE"
+  launch_type     = "FARGATE"
   network_configuration {
-    subnets = aws_subnet.subnets.*.id
+    subnets          = aws_subnet.subnets.*.id
     assign_public_ip = true
+    security_groups  = [aws_security_group.alb_sg.id]
   }
 
-  tags = var.tags
+  tags                    = var.tags
   enable_ecs_managed_tags = true
 
   load_balancer {
     target_group_arn = aws_lb_target_group.alb_tg.arn
-    container_name = var.app_name
-    container_port = var.app_port
+    container_name   = var.app_name
+    container_port   = var.app_port
   }
 }
